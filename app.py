@@ -46,7 +46,6 @@ EGX_ASSETS = {
     },
     "صناديق الأسهم والمؤشرات والدخل الثابت": {
         "EGX30ETF.CA": "صندوق مؤشر EGX 30 (وثائق مؤشرات)",
-        "CIB.CA": "وثائق وصناديق بنك CIB / أصول",
         "BTFH.CA": "بلتون القابضة (صناديق الذهب والدخل الثابت)",
         "HRHO.CA": "إي إف جي القابضة (صناديق الدخل والأسهم)",
         "ACTF.CA": "أكت فاينانشال (صناديق واستثمار)"
@@ -63,6 +62,9 @@ if st.sidebar.button("🔄 تحديث أسعار السوق", use_container_widt
 
 # حساب المؤشرات الفنية
 def add_technical_indicators(df):
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
+        
     delta = df['Close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
@@ -72,26 +74,20 @@ def add_technical_indicators(df):
     df['SMA_20'] = df['Close'].rolling(window=20).mean()
     df['SMA_50'] = df['Close'].rolling(window=50).mean()
     
-    df['BB_Std'] = df['Close'].rolling(window=20).std()
-    df['BB_Upper'] = df['SMA_20'] + (df['BB_Std'] * 2)
-    df['BB_Lower'] = df['SMA_20'] - (df['BB_Std'] * 2)
-    
     exp1 = df['Close'].ewm(span=12, adjust=False).mean()
     exp2 = df['Close'].ewm(span=26, adjust=False).mean()
     df['MACD'] = exp1 - exp2
     df['Signal_Line'] = df['MACD'].ewm(span=9, adjust=False).mean()
     
     df['Vol_Avg'] = df['Volume'].rolling(window=20).mean()
-    # حساب التذبذب اليومي (ATR مبسط) لتحديد وقف الخسارة المقترح
     df['ATR'] = (df['High'] - df['Low']).rolling(window=14).mean()
     return df
 
 # محرك التوصيات والتوقيتات الذكي
 def generate_recommendation(last, prev, vol_ratio):
-    score = 50  # نقطة البداية الحيادية
+    score = 50
     reasons = []
     
-    # 1. تحليل RSI
     if last['RSI'] < 30:
         score += 25
         reasons.append("تشبع بيعي حاد (فرصة ارتداد)")
@@ -100,12 +96,11 @@ def generate_recommendation(last, prev, vol_ratio):
         reasons.append("منطقة تجميع جيدة")
     elif last['RSI'] > 75:
         score -= 25
-        reasons.append("تشبع شرائي مرتفع (احتمال جني أرباح)")
+        reasons.append("تشبع شرائي مرتفع (جني أرباح)")
     elif 65 < last['RSI'] <= 75:
         score -= 10
         reasons.append("اقتراب من القمة")
 
-    # 2. تحليل الاتجاه والمتوسطات
     if last['Close'] > last['SMA_20'] and last['SMA_20'] > last['SMA_50']:
         score += 15
         reasons.append("اتجاه صاعد مؤكد")
@@ -113,7 +108,6 @@ def generate_recommendation(last, prev, vol_ratio):
         score -= 15
         reasons.append("اتجاه هابط")
 
-    # 3. تحليل MACD
     if last['MACD'] > last['Signal_Line'] and prev['MACD'] <= prev['Signal_Line']:
         score += 20
         reasons.append("تقاطع MACD إيجابي جديد")
@@ -121,7 +115,6 @@ def generate_recommendation(last, prev, vol_ratio):
         score -= 20
         reasons.append("تقاطع MACD سلبي")
 
-    # 4. تحليل السيولة
     if vol_ratio > 1.4 and last['Close'] > prev['Close']:
         score += 10
         reasons.append("دخول سيولة شرائية قوية")
@@ -160,27 +153,30 @@ def scan_assets(assets_dict):
             vol_ratio = last['Volume'] / last['Vol_Avg'] if last['Vol_Avg'] > 0 else 1.0
             score, action, timing_note = generate_recommendation(last, prev, vol_ratio)
             
-            # مستويات مقترحة للصفقة بناء على ATR
-            suggested_stop = round(last['Close'] - (1.5 * last['ATR']), 2)
-            suggested_target = round(last['Close'] + (3.0 * last['ATR']), 2)
+            suggested_stop = round(float(last['Close'] - (1.5 * last['ATR'])), 2)
+            suggested_target = round(float(last['Close'] + (3.0 * last['ATR'])), 2)
 
-            info = ticker.info
-            pe_ratio = info.get('trailingPE', None)
-            eps = info.get('trailingEps', None)
+            try:
+                info = ticker.info
+                pe_ratio = info.get('trailingPE', None)
+                eps = info.get('trailingEps', None)
+            except Exception:
+                pe_ratio = None
+                eps = None
 
             results.append({
                 "الرمز": symbol.replace(".CA", ""),
                 "الاسم": name,
-                "السعر": round(last['Close'], 2),
-                "التغير %": round(change_pct, 2),
-                "التقييم (100)": score,
+                "السعر": round(float(last['Close']), 2),
+                "التغير %": round(float(change_pct), 2),
+                "التقييم (100)": int(score),
                 "التوصية والقرار": action,
                 "سبب التوقيت": timing_note,
                 "وقف خسارة مقترح": suggested_stop,
                 "هدف بيع مقترح": suggested_target,
-                "RSI": round(last['RSI'], 1),
-                "P/E": round(pe_ratio, 2) if pe_ratio else "-",
-                "EPS": round(eps, 2) if eps else "-"
+                "RSI": round(float(last['RSI']), 1),
+                "P/E": round(float(pe_ratio), 2) if pe_ratio else "-",
+                "EPS": round(float(eps), 2) if eps else "-"
             })
         except Exception:
             continue
@@ -201,12 +197,12 @@ with st.spinner("جاري تحليل السوق وحساب التوصيات...")
 with tab1:
     st.subheader(f"توصيات الشراء والبيع وتوقيتات الدخول - {selected_category}")
     if not df_assets.empty:
-        df_sorted = df_assets.sort_values(by="التقييم (100)", ascending=False)
+        df_sorted = df_assets.sort_values(by="التقييم (100)", ascending=False).reset_index(drop=True)
         
         c1, c2, c3 = st.columns(3)
-        c1.metric("أفضل فرصة حالياً", df_sorted.iloc[0]["الاسم"], f"تقييم: {df_sorted.iloc[0]['التقييم (100)']}/100")
-        c2.metric("توصيات الشراء والتجميع", len(df_sorted[df_sorted["التقييم (100)"] >= 60]))
-        c3.metric("توصيات البيع وجني الأرباح", len(df_sorted[df_sorted["التقييم (100)"] < 45]))
+        c1.metric("أفضل فرصة حالياً", str(df_sorted.loc[0, "الاسم"]), f"تقييم: {df_sorted.loc[0, 'التقييم (100)']}/100")
+        c2.metric("توصيات الشراء والتجميع", int(len(df_sorted[df_sorted["التقييم (100)"] >= 60])))
+        c3.metric("توصيات البيع وجني الأرباح", int(len(df_sorted[df_sorted["التقييم (100)"] < 45])))
 
         st.dataframe(
             df_sorted[["الرمز", "الاسم", "السعر", "التغير %", "التقييم (100)", "التوصية والقرار", "سبب التوقيت", "وقف خسارة مقترح", "هدف بيع مقترح"]],
@@ -214,7 +210,7 @@ with tab1:
             hide_index=True
         )
     else:
-        st.warning("لا توجد بيانات متاحة حالياً.")
+        st.warning("لا توجد بيانات متاحة حالياً لهذا المؤشر.")
 
 # --- التبويب الثاني: حاسبة المخاطر وتكلفة الفرصة البديلة ---
 with tab2:
@@ -244,5 +240,9 @@ with tab2:
         expected_return_pct = (reward_per_share / entry_price) * 100
         rr_ratio = reward_per_share / risk_per_share
         
-        # حساب تكلفة الفرصة البديلة لنفس المبلغ ونفس المدة
         opportunity_cost_egp = position_value * (risk_free_annual / 100) * (holding_days / 365)
+        opportunity_cost_pct = (risk_free_annual) * (holding_days / 365)
+        net_alpha = expected_profit - opportunity_cost_egp
+
+        st.divider()
+        m1, m2, m3, m4 = st.columns(4)
