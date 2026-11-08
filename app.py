@@ -8,8 +8,8 @@ from plotly.subplots import make_subplots
 # إعدادات الصفحة
 st.set_page_config(page_title="EGX Radar Ultimate", page_icon="🎯", layout="wide")
 
-st.title("🎯 EGX Radar Ultimate - مستشار البورصة المصرية الذكي")
-st.markdown("تحليل فني ومالي متكامل، صناديق الاستثمار، وحاسبة المخاطر وتكلفة الفرصة البديلة.")
+st.title("🎯 EGX Radar Ultimate")
+st.caption("مستشار البورصة المصرية الذكي - التحليل الفني والمالي وإدارة المخاطر")
 
 # قاعدة بيانات المؤشرات وصناديق الاستثمار في البورصة المصرية
 EGX_ASSETS = {
@@ -52,13 +52,23 @@ EGX_ASSETS = {
     }
 }
 
-# القائمة الجانبية
-st.sidebar.header("⚙️ لوحة التحكم")
-selected_category = st.sidebar.selectbox("اختر الفئة أو المؤشر:", list(EGX_ASSETS.keys()))
+# شريط اختيار المؤشر
+selected_category = st.selectbox("📌 اختر المؤشر أو الفئة:", list(EGX_ASSETS.keys()))
 current_assets = EGX_ASSETS[selected_category]
 
-if st.sidebar.button("🔄 تحديث أسعار السوق", use_container_width=True):
-    st.cache_data.clear()
+# شريط التنقل الرئيسي المتوافق مع الهواتف (بديل التبويبات المعطلة)
+st.divider()
+page = st.radio(
+    "اختر القسم المطلوب:",
+    [
+        "🎯 1. التوصيات والتوقيتات",
+        "⚖️ 2. حاسبة المخاطر والفرصة البديلة",
+        "📈 3. الرسم البياني المتقدم",
+        "🏦 4. الصناديق والتحليل المالي"
+    ],
+    horizontal=True
+)
+st.divider()
 
 # حساب المؤشرات الفنية
 def add_technical_indicators(df):
@@ -182,20 +192,14 @@ def scan_assets(assets_dict):
             continue
     return pd.DataFrame(results)
 
-# التبويبات الأربعة الرئيسية
-tab1, tab2, tab3, tab4 = st.tabs([
-    "🎯 التوصيات والتوقيتات",
-    "⚖️ حاسبة المخاطر والفرصة البديلة",
-    "📈 الرسم البياني المتقدم",
-    "🏦 الصناديق والتحليل المالي"
-])
-
-with st.spinner("جاري تحليل السوق وحساب التوصيات..."):
-    df_assets = scan_assets(current_assets)
-
-# --- التبويب الأول: التوصيات والتوقيتات ---
-with tab1:
-    st.subheader(f"توصيات الشراء والبيع وتوقيتات الدخول - {selected_category}")
+# ==========================================
+# القسم 1: التوصيات والتوقيتات
+# ==========================================
+if page == "🎯 1. التوصيات والتوقيتات":
+    st.subheader(f"توصيات الشراء والبيع - {selected_category}")
+    with st.spinner("جاري فحص الأسهم وحساب التوصيات..."):
+        df_assets = scan_assets(current_assets)
+        
     if not df_assets.empty:
         df_sorted = df_assets.sort_values(by="التقييم (100)", ascending=False).reset_index(drop=True)
         
@@ -212,8 +216,10 @@ with tab1:
     else:
         st.warning("لا توجد بيانات متاحة حالياً لهذا المؤشر.")
 
-# --- التبويب الثاني: حاسبة المخاطر وتكلفة الفرصة البديلة ---
-with tab2:
+# ==========================================
+# القسم 2: حاسبة المخاطر وتكلفة الفرصة البديلة
+# ==========================================
+elif page == "⚖️ 2. حاسبة المخاطر والفرصة البديلة":
     st.subheader("⚖️ أداة إدارة المخاطر وتكلفة الفرصة البديلة")
     st.markdown("قيّم جدوى الصفقة قبل الدخول وقارن عائدها المتوقع بالعائد الخالي من المخاطر (أذون الخزانة وصناديق الدخل الثابت).")
     
@@ -242,7 +248,3 @@ with tab2:
         
         opportunity_cost_egp = position_value * (risk_free_annual / 100) * (holding_days / 365)
         opportunity_cost_pct = (risk_free_annual) * (holding_days / 365)
-        net_alpha = expected_profit - opportunity_cost_egp
-
-        st.divider()
-        m1, m2, m3, m4 = st.columns(4)
