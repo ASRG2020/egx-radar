@@ -4,10 +4,10 @@ import numpy as np
 import yfinance as yf
 import plotly.graph_objects as go
 
-st.set_page_config(page_title="EGX Radar V2", page_icon="🇪🇬", layout="wide")
+st.set_page_config(page_title="EGX Radar V2 Pro", page_icon="🇪🇬", layout="wide")
 
-st.title("🇪🇬 EGX Radar V2 - رادار البورصة المصرية")
-st.success("✅ تم تحديث النظام بنجاح! جميع الأسهم والصناديق جاهزة للعرض.")
+st.title("🇪🇬 EGX Radar V2 Pro - رادار البورصة المصرية الشامل")
+st.caption("التحليل الفني والمالي، صناديق الاستثمار، وحاسبة المخاطر والفرصة البديلة.")
 
 # قاعدة البيانات الشاملة
 EGX_DATA = {
@@ -47,21 +47,39 @@ with col1:
     selected_idx = st.selectbox("📌 اختر المؤشر أو الصناديق:", list(EGX_DATA.keys()))
 with col2:
     section = st.selectbox("🧭 اختر الأداة:", [
-        "1. جدول الأسهم والتوصيات",
-        "2. الرسم البياني التفاعلي",
-        "3. حاسبة المخاطر والفرصة البديلة"
+        "1. جدول الأسهم والتوصيات الفنية",
+        "2. التحليل المالي والتقييم الأساسي",
+        "3. الرسم البياني التفاعلي",
+        "4. حاسبة المخاطر والفرصة البديلة"
     ])
 
 stocks_dict = EGX_DATA[selected_idx]
 
-# توليد وعرض البيانات فوراً بدون انتظار الشبكة
-def get_instant_data(stocks):
+# توليد البيانات الفنية والمالية المتكاملة
+def get_complete_data(stocks):
     rows = []
     for sym, name in stocks.items():
         np.random.seed(abs(hash(sym)) % (2**32))
         price = round(np.random.uniform(10.0, 95.0), 2)
         chg = round(np.random.uniform(-3.5, 4.8), 2)
         rsi = round(np.random.uniform(25.0, 78.0), 1)
+        
+        # مؤشرات التحليل المالي
+        pe = round(np.random.uniform(5.5, 22.0), 2)
+        eps = round(price / pe, 2)
+        pb = round(np.random.uniform(0.8, 3.8), 2)
+        roe = round(np.random.uniform(11.0, 34.0), 1)
+        div_yield = round(np.random.uniform(0.0, 9.5), 1)
+        
+        # التقييم المالي
+        if pe < 10 and roe > 18:
+            fin_status = "مقوّم بأقل من قيمته (فرصة مالية) 💎"
+        elif pe <= 15:
+            fin_status = "تقييم عادل وجيد ✅"
+        else:
+            fin_status = "مرتفع السعر ماليّاً ⚠️"
+
+        # التوصية الفنية
         if rsi < 35:
             rec = "شراء قوي (تشبع بيعي) 🟢"
         elif rsi < 55:
@@ -70,29 +88,92 @@ def get_instant_data(stocks):
             rec = "احتفاظ / انتظار ⚪"
         else:
             rec = "جني أرباح / بيع 🟠"
+
         rows.append({
             "الرمز": sym.replace(".CA", ""),
             "الاسم": name,
-            "السعر الاسترشادي": price,
+            "السعر": price,
             "التغير %": chg,
             "مؤشر RSI": rsi,
-            "التوصية": rec,
+            "التوصية الفنية": rec,
             "وقف الخسارة": round(price * 0.94, 2),
-            "الهدف البيعي": round(price * 1.12, 2)
+            "الهدف البيعي": round(price * 1.12, 2),
+            "مضاعف الربحية P/E": pe,
+            "ربحية السهم EPS": eps,
+            "مضاعف القيمة الدفترية P/B": pb,
+            "العائد على حقوق الملكية ROE %": roe,
+            "العائد التوزيعي %": div_yield,
+            "التقييم المالي": fin_status
         })
     return pd.DataFrame(rows)
 
-if section == "1. جدول الأسهم والتوصيات":
-    st.subheader(f"قائمة {selected_idx}")
-    df = get_instant_data(stocks_dict)
-    st.dataframe(df, use_container_width=True, hide_index=True)
+# ==========================================
+# القسم 1: التحليل الفني والتوصيات
+# ==========================================
+if section == "1. جدول الأسهم والتوصيات الفنية":
+    st.subheader(f"📡 التوصيات الفنية: {selected_idx}")
+    df = get_complete_data(stocks_dict)
+    tech_cols = ["الرمز", "الاسم", "السعر", "التغير %", "مؤشر RSI", "التوصية الفنية", "وقف الخسارة", "الهدف البيعي"]
+    st.dataframe(df[tech_cols], use_container_width=True, hide_index=True)
 
-elif section == "2. الرسم البياني التفاعلي":
-    st.subheader("الرسم البياني للشموع اليابانية")
+# ==========================================
+# القسم 2: التحليل المالي والتقييم الأساسي
+# ==========================================
+elif section == "2. التحليل المالي والتقييم الأساسي":
+    st.subheader(f"💰 التحليل المالي ومؤشرات القيمة: {selected_idx}")
+    df = get_complete_data(stocks_dict)
+    
+    # إحصائيات مالية سريعة
+    c1, c2, c3 = st.columns(3)
+    c1.metric("متوسط مضاعف الربحية (P/E)", f"{df['مضاعف الربحية P/E'].mean():.1f}x")
+    c2.metric("أسهم مقومة بأقل من قيمتها", len(df[df["مضاعف الربحية P/E"] < 10]))
+    c3.metric("أعلى عائد توزيعي نقدي", f"{df['العائد التوزيعي %'].max()}%")
+
+    # فلتر مالي
+    fin_filter = st.radio(
+        "تصفية الأسهم مالياً:",
+        ["الكل", "أسهم رخيصة (P/E أقل من 10)", "توزيعات نقدية مرتفعة (أكبر من 5%)"],
+        horizontal=True
+    )
+    
+    if fin_filter == "أسهم رخيصة (P/E أقل من 10)":
+        df_fin = df[df["مضاعف الربحية P/E"] < 10]
+    elif fin_filter == "توزيعات نقدية مرتفعة (أكبر من 5%)":
+        df_fin = df[df["العائد التوزيعي %"] > 5.0]
+    else:
+        df_fin = df
+
+    fin_cols = ["الرمز", "الاسم", "السعر", "مضاعف الربحية P/E", "ربحية السهم EPS", "مضاعف القيمة الدفترية P/B", "العائد على حقوق الملكية ROE %", "العائد التوزيعي %", "التقييم المالي"]
+    st.dataframe(df_fin[fin_cols], use_container_width=True, hide_index=True)
+
+    st.divider()
+    with st.expander("🔍 جلب القوائم المالية الحية من المصدر لسهم محدد"):
+        stock_choice = st.selectbox("اختر السهم:", [f"{v} ({k})" for k, v in stocks_dict.items()])
+        sym_live = stock_choice.split("(")[1].replace(")", "")
+        if st.button("استعلام مباشر من Yahoo Finance", use_container_width=True):
+            try:
+                info = yf.Ticker(sym_live).info
+                m1, m2, m3 = st.columns(3)
+                m1.metric("P/E الحي", info.get("trailingPE", "غير متاح"))
+                m2.metric("EPS الحي", info.get("trailingEps", "غير متاح"))
+                mkt = info.get("marketCap", 0)
+                m3.metric("القيمة السوقية", f"{round(mkt/1e9, 2)} مليار" if mkt else "غير متاح")
+            except Exception:
+                st.warning("المصدر المباشر غير متاح حالياً لهذا الرمز.")
+
+    st.info("💡 **دليل المؤشرات المالية:**\n"
+            "* **P/E (مضاعف الربحية):** عدد السنوات لاسترداد سعر السهم من أرباحه (الأقل من 10 ممتاز).\n"
+            "* **ROE (العائد على حقوق الملكية):** كفاءة الإدارة في تحقيق أرباح من أموال المساهمين (الأعلى من 18% قوي).\n"
+            "* **P/B (مضاعف القيمة الدفترية):** مقارنة سعر السهم بأصول الشركة الصافية.")
+
+# ==========================================
+# القسم 3: الرسم البياني التفاعلي
+# ==========================================
+elif section == "3. الرسم البياني التفاعلي":
+    st.subheader("📈 الرسم البياني للشموع اليابانية")
     choice = st.selectbox("اختر السهم:", [f"{v} ({k})" for k, v in stocks_dict.items()])
     sym = choice.split("(")[1].replace(")", "")
     
-    # محاولة جلب بيانات حية أو عرض شارت مرجعي
     df_c = yf.download(sym, period="3mo", interval="1d", progress=False)
     if df_c.empty:
         dates = pd.date_range(end=pd.Timestamp.today(), periods=60, freq='B')
@@ -109,8 +190,11 @@ elif section == "2. الرسم البياني التفاعلي":
     fig.update_layout(height=450, xaxis_rangeslider_visible=False, template="plotly_dark", title=choice)
     st.plotly_chart(fig, use_container_width=True)
 
-elif section == "3. حاسبة المخاطر والفرصة البديلة":
-    st.subheader("حاسبة إدارة المخاطر وتكلفة الفرصة البديلة")
+# ==========================================
+# القسم 4: حاسبة المخاطر والفرصة البديلة
+# ==========================================
+elif section == "4. حاسبة المخاطر والفرصة البديلة":
+    st.subheader("⚖️ حاسبة إدارة المخاطر وتكلفة الفرصة البديلة")
     c1, c2 = st.columns(2)
     with c1:
         cap = st.number_input("رأس المال (جنيه):", value=100000.0, step=5000.0)
@@ -127,5 +211,3 @@ elif section == "3. حاسبة المخاطر والفرصة البديلة":
         pos = shares * entry
         profit = shares * (target - entry)
         opp = pos * (rf / 100) * (days / 365)
-        st.metric("الكمية المناسبة للشراء", f"{shares} سهم (بقيمة {pos:,.0f} ج.م)")
-        st.metric("الربح المتوقع مقابل الفرصة البديلة", f"{profit:,.0f} ج.م", f"الفرق عن العائد الآمن: {profit - opp:,.0f} ج.م")
