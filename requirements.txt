@@ -1,4 +1,9 @@
+### 2. الكود المحدث لملف `requirements.txt`
+أضفنا مكتبة `plotly` لدعم الرسوم البيانية التفاعلية على الهاتف والكمبيوتر:
+
+```text
 streamlit
 yfinance
 pandas
 numpy
+plotly
