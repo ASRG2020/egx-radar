@@ -6,252 +6,231 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 # إعدادات الصفحة
-st.set_page_config(page_title="EGX Radar Fast", page_icon="⚡", layout="wide")
+st.set_page_config(page_title="EGX Radar Pro 30 & 70", page_icon="🇪🇬", layout="wide")
 
-st.title("⚡ EGX Radar Ultimate")
-st.caption("مستشار البورصة المصرية الذكي - سريع ومتوافق مع الهواتف")
+st.title("🇪🇬 EGX Radar Pro - رادار البورصة المصرية الشامل")
+st.caption("يشمل القائمة الكاملة لأسهم EGX 30 و EGX 70، الصناديق، التحليل الفني، وحاسبة المخاطر.")
 
-# قاعدة بيانات المؤشرات وصناديق الاستثمار
-EGX_ASSETS = {
-    "EGX 30 (المؤشر الرئيسي)": {
-        "COMI.CA": "التجاري الدولي",
-        "TMGH.CA": "طلعت مصطفى",
-        "EAST.CA": "الشرقية للدخان",
-        "ABUK.CA": "أبو قير للأسمدة",
-        "MFPC.CA": "موبكو للأسمدة",
-        "SWDY.CA": "السويدي إليكتريك",
-        "HRHO.CA": "هيرميس القابضة",
-        "FWRY.CA": "فوري",
+# القائمة الكاملة والمحدثة لأسهم البورصة المصرية
+EGX_DATA = {
+    "مؤشر EGX 30 (30 سهماً بالكامل)": {
+        "COMI.CA": "البنك التجاري الدولي (CIB)",
+        "TMGH.CA": "مجموعة طلعت مصطفى القابضة",
         "ETEL.CA": "المصرية للاتصالات",
+        "EAST.CA": "الشرقية - إيسترن كومباني",
+        "FWRY.CA": "فوري لتكنولوجيا البنوك",
+        "EFIH.CA": "إي فاينانس للاستثمارات",
+        "ABUK.CA": "أبو قير للأسمدة",
+        "ADIB.CA": "مصرف أبوظبي الإسلامي",
+        "HRHO.CA": "مجموعة إي إف جي القابضة (هيرميس)",
         "ORAS.CA": "أوراسكوم كونستراكشن",
-        "ESRS.CA": "حديد عز",
-        "HELI.CA": "مصر الجديدة للإسكان",
-        "PHDC.CA": "بالم هيلز",
-        "EKHO.CA": "القابضة المصرية الكويتية",
-        "AMOC.CA": "أموك للزيوت"
+        "CCAP.CA": "القلعة للاستشارات المالية",
+        "EFID.CA": "إيديتا للصناعات الغذائية",
+        "MFPC.CA": "مصر لإنتاج الأسمدة - موبكو",
+        "VLMR.CA": "فالمور القابضة للاستثمار",
+        "ALCN.CA": "الإسكندرية لتداول الحاويات",
+        "AMOC.CA": "الإسكندرية للزيوت المعدنية",
+        "PHDC.CA": "بالم هيلز للتعمير",
+        "EGAL.CA": "مصر للألومنيوم",
+        "BTFH.CA": "بلتون القابضة",
+        "ORHD.CA": "أوراسكوم للتنمية مصر",
+        "GBCO.CA": "جي بي كورب",
+        "SKPC.CA": "سيدي كرير للبتروكيماويات",
+        "JUFO.CA": "جهينة للصناعات الغذائية",
+        "CLHO.CA": "مستشفى كليوباترا",
+        "HELI.CA": "مصر الجديدة للإسكان والتعمير",
+        "ISPH.CA": "ابن سينا فارما",
+        "MCQE.CA": "مصر للأسمنت - قنا",
+        "EMFD.CA": "إعمار مصر للتنمية",
+        "RMDA.CA": "العاشر من رمضان - راميدا",
+        "RAYA.CA": "راية القابضة للاستثمارات المالية"
     },
-    "EGX 70 (الأسهم الصغيرة والمتوسطة)": {
-        "BINV.CA": "بي إنفستمنتس القابضة",
+    "مؤشر EGX 70 EWI (70 سهماً بالكامل)": {
+        "SWDY.CA": "السويدي إليكتريك",
+        "HDBK.CA": "بنك التعمير والإسكان",
+        "CIEB.CA": "بنك كريدي أجريكول مصر",
+        "ORWE.CA": "النساجون الشرقيون للسجاد",
+        "OCDI.CA": "السادس من أكتوبر للتنمية (سوديك)",
+        "TAQA.CA": "طاقة عربية",
+        "VALU.CA": "فاليو للتمويل الاستهلاكي",
+        "BONY.CA": "بنيان للتنمية والتجارة",
+        "ACTF.CA": "أكت فاينانشال للاستشارات",
+        "MASR.CA": "مدينة مصر للإسكان والتعمير",
+        "ZMID.CA": "زهراء المعادي للاستثمار",
+        "EGCH.CA": "الصناعات الكيماوية المصرية (كيما)",
+        "PHAR.CA": "المصرية الدولية للصناعات الدوائية (ايبيكو)",
+        "MTIE.CA": "ام.ام جروب للصناعة والتجارة",
+        "MPRC.CA": "المصرية لمدينة الإنتاج الإعلامي",
+        "POUL.CA": "القاهرة للدواجن",
+        "ISMA.CA": "الإسماعيلية مصر للدواجن",
+        "MPCO.CA": "المنصورة للدواجن",
+        "ATQA.CA": "مصر الوطنية للصلب - عتاقة",
+        "ISMQ.CA": "الحديد والصلب للمناجم والمحاجر",
+        "ARCC.CA": "العربية للأسمنت",
+        "SCEM.CA": "أسمنت سيناء",
+        "MBSC.CA": "مصر بني سويف للأسمنت",
+        "SVCE.CA": "أسمنت جنوب الوادي",
+        "ASCM.CA": "أسيك للتعدين - اسكوم",
+        "ELEC.CA": "الكابلات الكهربائية المصرية",
+        "ENGC.CA": "الصناعات الهندسية المعمارية (ايكون)",
+        "LCSW.CA": "ليسيكو مصر",
+        "PRCL.CA": "العامة لمنتجات الخزف والصيني",
         "DSCW.CA": "دايس للملابس الجاهزة",
-        "ASCM.CA": "أسيك للتعدين",
-        "CCAP.CA": "القلعة للاستشارات",
-        "EGTS.CA": "المصرية للمنتجعات",
-        "ELSH.CA": "الشمس للإسكان",
-        "MPRC.CA": "مدينة الإنتاج الإعلامي",
-        "OFH.CA": "أوراسكوم المالية"
+        "KABO.CA": "النصر للملابس والمنسوجات (كابو)",
+        "EGTS.CA": "المصرية للمنتجعات السياحية",
+        "ELSH.CA": "الشمس للإسكان والتعمير",
+        "ELKA.CA": "القاهرة للإسكان والتعمير",
+        "PRDC.CA": "بايونيرز بروبرتيز للتنمية العمرانية",
+        "UEGC.CA": "الصعيد العامة للمقاولات",
+        "DAPH.CA": "التعمير والاستشارات الهندسية",
+        "ARAB.CA": "المطورون العرب القابضة",
+        "AMER.CA": "مجموعة عامر القابضة",
+        "OIH.CA": "أوراسكوم للاستثمار القابضة",
+        "OFH.CA": "أو بي المالية القابضة",
+        "ASPI.CA": "اسباير كابيتال القابضة",
+        "AMIA.CA": "الملتقى العربي للاستثمارات",
+        "AIHC.CA": "العربية للاستثمارات والتنمية",
+        "AIDC.CA": "العربية للاستثمار والتنمية",
+        "ATLC.CA": "التوفيق للتأجير التمويلي",
+        "CNFN.CA": "كونتكت المالية القابضة",
+        "CSAG.CA": "القناة للتوكيلات الملاحية",
+        "ETRS.CA": "المصرية لخدمات النقل (ايجيترانس)",
+        "ICFC.CA": "الدولية للأسمدة والكيماويات",
+        "MPCI.CA": "ممفيس للأدوية والصناعات الكيماوية",
+        "NIPH.CA": "النيل للأدوية والصناعات الكيماوية",
+        "SIPC.CA": "سبأ الدولية للأدوية",
+        "MCRO.CA": "ماكرو جروب للمستحضرات الطبية",
+        "MEPA.CA": "العبوات الطبية",
+        "ZEOT.CA": "الزيوت المستخلصة ومنتجاتها",
+        "COSG.CA": "القاهرة للزيوت والصابون",
+        "AIFI.CA": "اطلس للاستثمار والصناعات الغذائية",
+        "GOUR.CA": "جورميه إيجيبت",
+        "SDTI.CA": "شارم دريمز للاستثمار السياحي",
+        "GDWA.CA": "جدوى للتنمية الصناعية",
+        "GPIM.CA": "جي بي أي للنمو العمراني",
+        "NCCW.CA": "النصر للأعمال المدنية",
+        "IEEC.CA": "المشروعات الصناعية والهندسية",
+        "MOED.CA": "المصرية لنظم التعليم الحديثة"
     },
     "صناديق الأسهم والمؤشرات والدخل الثابت": {
-        "EGX30ETF.CA": "صندوق مؤشر EGX 30",
-        "BTFH.CA": "بلتون القابضة (صناديق الذهب والدخل)",
+        "EGX30ETF.CA": "صندوق مؤشر EGX 30 (وثائق مؤشرات)",
+        "BTFH.CA": "بلتون القابضة (صناديق الذهب والدخل الثابت)",
         "HRHO.CA": "إي إف جي القابضة (صناديق الاستثمار)",
-        "ACTF.CA": "أكت فاينانشال"
+        "ACTF.CA": "أكت فاينانشال (صناديق واستثمار)"
     }
 }
 
-# شريط اختيار المؤشر
-selected_category = st.selectbox("📌 اختر المؤشر أو الفئة:", list(EGX_ASSETS.keys()))
-current_assets = EGX_ASSETS[selected_category]
+# اختيار المؤشر والقسم في واجهة واحدة واضحة
+col_top1, col_top2 = st.columns([1, 2])
+with col_top1:
+    selected_index = st.selectbox("📌 1. اختر المؤشر:", list(EGX_DATA.keys()))
+with col_top2:
+    selected_section = st.selectbox(
+        "🧭 2. اختر القسم المطلوب:",
+        [
+            "🎯 رادار التوصيات والتوقيتات (جميع الأسهم)",
+            "📈 التحليل الفني والرسم البياني التفاعلي",
+            "⚖️ حاسبة المخاطر وتكلفة الفرصة البديلة",
+            "🏦 التحليل المالي ودليل صناديق الاستثمار"
+        ]
+    )
 
-st.divider()
-# شريط التنقل السريع
-page = st.radio(
-    "انتقل إلى القسم:",
-    [
-        "🎯 1. التوصيات والتوقيتات",
-        "⚖️ 2. حاسبة المخاطر والفرصة البديلة",
-        "📈 3. الرسم البياني المتقدم",
-        "🏦 4. الصناديق والتحليل المالي"
-    ],
-    horizontal=True
-)
+current_stocks = EGX_DATA[selected_index]
 st.divider()
 
-# دالة حساب المؤشرات الفنية
-def add_technical_indicators(df):
+# دالة المؤشرات الفنية
+def calc_indicators(df):
     delta = df['Close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
     rs = gain / loss
     df['RSI'] = 100 - (100 / (1 + rs))
-    
     df['SMA_20'] = df['Close'].rolling(window=20).mean()
     df['SMA_50'] = df['Close'].rolling(window=50).mean()
-    
     exp1 = df['Close'].ewm(span=12, adjust=False).mean()
     exp2 = df['Close'].ewm(span=26, adjust=False).mean()
     df['MACD'] = exp1 - exp2
-    df['Signal_Line'] = df['MACD'].ewm(span=9, adjust=False).mean()
-    
+    df['Signal'] = df['MACD'].ewm(span=9, adjust=False).mean()
     df['Vol_Avg'] = df['Volume'].rolling(window=20).mean()
     df['ATR'] = (df['High'] - df['Low']).rolling(window=14).mean()
     return df
 
-# محرك التوصيات
-def generate_recommendation(last, prev, vol_ratio):
+# دالة التوصيات
+def get_signal(last, prev, vol_ratio):
     score = 50
     reasons = []
-    
     if last['RSI'] < 30:
-        score += 25
-        reasons.append("تشبع بيعي حاد")
+        score += 25; reasons.append("تشبع بيعي حاد")
     elif 30 <= last['RSI'] <= 45:
-        score += 15
-        reasons.append("منطقة تجميع")
+        score += 15; reasons.append("منطقة تجميع")
     elif last['RSI'] > 75:
-        score -= 25
-        reasons.append("تشبع شرائي مرتفع")
+        score -= 25; reasons.append("تشبع شرائي مرتفع")
     elif 65 < last['RSI'] <= 75:
-        score -= 10
-        reasons.append("اقتراب من القمة")
+        score -= 10; reasons.append("اقتراب من القمة")
 
     if last['Close'] > last['SMA_20'] and last['SMA_20'] > last['SMA_50']:
-        score += 15
-        reasons.append("اتجاه صاعد")
+        score += 15; reasons.append("اتجاه صاعد")
     elif last['Close'] < last['SMA_20'] and last['Close'] < last['SMA_50']:
-        score -= 15
-        reasons.append("اتجاه هابط")
+        score -= 15; reasons.append("اتجاه هابط")
 
-    if last['MACD'] > last['Signal_Line'] and prev['MACD'] <= prev['Signal_Line']:
-        score += 20
-        reasons.append("تقاطع MACD إيجابي")
-    elif last['MACD'] < last['Signal_Line'] and prev['MACD'] >= prev['Signal_Line']:
-        score -= 20
-        reasons.append("تقاطع MACD سلبي")
+    if last['MACD'] > last['Signal'] and prev['MACD'] <= prev['Signal']:
+        score += 20; reasons.append("تقاطع MACD إيجابي")
+    elif last['MACD'] < last['Signal'] and prev['MACD'] >= prev['Signal']:
+        score -= 20; reasons.append("تقاطع MACD سلبي")
 
     if vol_ratio > 1.4 and last['Close'] > prev['Close']:
-        score += 10
-        reasons.append("سيولة عالية")
+        score += 10; reasons.append("سيولة عالية")
 
     score = max(0, min(100, score))
-    
-    if score >= 75:
-        action = "شراء قوي 🟢"
-    elif score >= 60:
-        action = "تجميع / شراء 🔵"
-    elif score >= 45:
-        action = "انتظار ⚪"
-    elif score >= 30:
-        action = "جني أرباح 🟠"
-    else:
-        action = "بيع / تجنب 🔴"
-        
-    timing_note = " + ".join(reasons) if reasons else "حركة عرضية"
-    return score, action, timing_note
+    if score >= 75: action = "شراء قوي 🟢"
+    elif score >= 60: action = "تجميع / شراء 🔵"
+    elif score >= 45: action = "انتظار ⚪"
+    elif score >= 30: action = "جني أرباح 🟠"
+    else: action = "بيع / تجنب 🔴"
+    return score, action, (" + ".join(reasons) if reasons else "حركة عرضية")
 
-# التحميل المجمع بضربة واحدة (فائق السرعة)
+# تحميل مجمع سريع جداً لجميع الأسهم
 @st.cache_data(ttl=1800)
-def scan_assets_batch(symbols_tuple, names_tuple):
+def fetch_all_market(symbols_tuple, names_tuple):
     symbols = list(symbols_tuple)
     names_map = dict(zip(symbols, names_tuple))
-    results = []
-    
+    rows = []
     try:
-        # تحميل كل الأسهم في طلب واحد
-        raw_data = yf.download(symbols, period="4mo", interval="1d", group_by="ticker", progress=False, threads=True)
+        data = yf.download(symbols, period="4mo", interval="1d", group_by="ticker", progress=False, threads=True)
     except Exception:
         return pd.DataFrame()
 
     for sym in symbols:
         try:
-            df = raw_data[sym].dropna(how='all') if len(symbols) > 1 else raw_data.dropna(how='all')
+            df = data[sym].dropna(how='all') if len(symbols) > 1 else data.dropna(how='all')
             if df.empty or len(df) < 25:
                 continue
-                
-            df = add_technical_indicators(df.copy())
-            last = df.iloc[-1]
-            prev = df.iloc[-2]
-            
-            change_pct = ((float(last['Close']) - float(prev['Close'])) / float(prev['Close'])) * 100
-            vol_ratio = float(last['Volume']) / float(last['Vol_Avg']) if float(last['Vol_Avg']) > 0 else 1.0
-            score, action, timing_note = generate_recommendation(last, prev, vol_ratio)
-            
-            suggested_stop = round(float(last['Close'] - (1.5 * last['ATR'])), 2)
-            suggested_target = round(float(last['Close'] + (3.0 * last['ATR'])), 2)
-
-            results.append({
+            df = calc_indicators(df.copy())
+            last, prev = df.iloc[-1], df.iloc[-2]
+            chg = ((float(last['Close']) - float(prev['Close'])) / float(prev['Close'])) * 100
+            v_ratio = float(last['Volume']) / float(last['Vol_Avg']) if float(last['Vol_Avg']) > 0 else 1.0
+            score, action, note = get_signal(last, prev, v_ratio)
+            rows.append({
                 "الرمز": sym.replace(".CA", ""),
-                "الاسم": names_map[sym],
+                "اسم الشركة": names_map[sym],
                 "السعر": round(float(last['Close']), 2),
-                "التغير %": round(change_pct, 2),
+                "التغير %": round(chg, 2),
                 "التقييم (100)": int(score),
-                "التوصية": action,
-                "سبب التوقيت": timing_note,
-                "وقف الخسارة": suggested_stop,
-                "هدف البيع": suggested_target,
+                "القرار والتوصية": action,
+                "سبب التوقيت": note,
+                "وقف خسارة": round(float(last['Close'] - 1.5 * last['ATR']), 2),
+                "هدف بيع": round(float(last['Close'] + 3.0 * last['ATR']), 2),
                 "RSI": round(float(last['RSI']), 1)
             })
         except Exception:
             continue
-    return pd.DataFrame(results)
+    return pd.DataFrame(rows)
 
-# دالة مخبأة في الذاكرة للرسم البياني الفوري
-@st.cache_data(ttl=1800)
-def get_single_chart_data(symbol):
-    df = yf.download(symbol, period="6mo", interval="1d", progress=False)
-    if isinstance(df.columns, pd.MultiIndex):
-        df.columns = df.columns.get_level_values(0)
-    if not df.empty and len(df) > 20:
-        return add_technical_indicators(df)
-    return pd.DataFrame()
-
-# ==========================================
-# القسم 1: التوصيات والتوقيتات
-# ==========================================
-if page == "🎯 1. التوصيات والتوقيتات":
-    st.subheader(f"توصيات الشراء والبيع - {selected_category}")
-    df_assets = scan_assets_batch(tuple(current_assets.keys()), tuple(current_assets.values()))
+# ==============================================================================
+# القسم 1: رادار التوصيات والتوقيتات
+# ==============================================================================
+if selected_section == "🎯 رادار التوصيات والتوقيتات (جميع الأسهم)":
+    st.subheader(f"📡 مسح شامل: {selected_index}")
+    if st.button("🔄 تحديث الأسعار الآن"):
+        st.cache_data.clear()
         
-    if not df_assets.empty:
-        df_sorted = df_assets.sort_values(by="التقييم (100)", ascending=False).reset_index(drop=True)
-        
-        c1, c2, c3 = st.columns(3)
-        c1.metric("أفضل فرصة حالياً", str(df_sorted.loc[0, "الاسم"]), f"تقييم: {df_sorted.loc[0, 'التقييم (100)']}/100")
-        c2.metric("توصيات الشراء", int(len(df_sorted[df_sorted["التقييم (100)"] >= 60])))
-        c3.metric("توصيات البيع", int(len(df_sorted[df_sorted["التقييم (100)"] < 45])))
-
-        st.dataframe(df_sorted, use_container_width=True, hide_index=True)
-    else:
-        st.warning("تعذر جلب البيانات حالياً.")
-
-# ==========================================
-# القسم 2: حاسبة المخاطر وتكلفة الفرصة البديلة
-# ==========================================
-elif page == "⚖️ 2. حاسبة المخاطر والفرصة البديلة":
-    st.subheader("⚖️ أداة إدارة المخاطر وتكلفة الفرصة البديلة")
-    col_in1, col_in2 = st.columns(2)
-    with col_in1:
-        capital = st.number_input("إجمالي رأس مال المحفظة (جنيه):", min_value=1000.0, value=100000.0, step=5000.0)
-        risk_pct = st.slider("نسبة المخاطرة في الصفقة (%):", min_value=0.5, max_value=5.0, value=2.0, step=0.5)
-        risk_free_annual = st.number_input("العائد السنوي للفرصة البديلة الآمنة (%):", min_value=5.0, max_value=40.0, value=25.0, step=0.5)
-        holding_days = st.number_input("مدة الاحتفاظ المتوقعة (أيام):", min_value=1, max_value=365, value=30)
-
-    with col_in2:
-        entry_price = st.number_input("سعر الشراء المستهدف (جنيه):", min_value=0.1, value=50.0, step=0.5)
-        stop_loss = st.number_input("سعر وقف الخسارة (جنيه):", min_value=0.1, value=47.0, step=0.5)
-        target_price = st.number_input("سعر البيع المستهدف (جنيه):", min_value=0.1, value=58.0, step=0.5)
-
-    if entry_price > stop_loss and target_price > entry_price:
-        max_risk_egp = capital * (risk_pct / 100)
-        risk_per_share = entry_price - stop_loss
-        reward_per_share = target_price - entry_price
-        
-        recommended_shares = int(max_risk_egp // risk_per_share)
-        position_value = recommended_shares * entry_price
-        expected_profit = recommended_shares * reward_per_share
-        rr_ratio = reward_per_share / risk_per_share
-        
-        opportunity_cost_egp = position_value * (risk_free_annual / 100) * (holding_days / 365)
-        net_alpha = expected_profit - opportunity_cost_egp
-
-        st.divider()
-        m1, m2, m3, m4 = st.columns(4)
-        m1.metric("الكمية المثالية للشراء", f"{recommended_shares} سهم", f"بقيمة {position_value:,.0f} ج.م")
-        m2.metric("العائد للمخاطرة", f"1 : {rr_ratio:.2f}")
-        m3.metric("الربح المتوقع", f"{expected_profit:,.0f} ج.م")
-        m4.metric("الفرصة البديلة", f"{opportunity_cost_egp:,.0f} ج.م")
-
-        if net_alpha > 0 and rr_ratio >= 1.5:
-            st.success(f"✅ صفقة مجدية: تتفوق على العائد الآمن بصافي **{net_alpha:,.0f} جنيه**.")
-        else:
-            st.warning(f"⚠️ تنبيه: العائد أقل من الفرصة البديلة أو المخاطرة مرتفعة (الفرق: {net_alpha:,.0f} جنيه).")
-
