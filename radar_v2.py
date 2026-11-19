@@ -56,7 +56,6 @@ with col2:
 
 stocks_dict = EGX_DATA[selected_idx]
 
-# دالة جلب البيانات التاريخية (حية أو مرجعية مستقرة)
 @st.cache_data(ttl=1800)
 def get_stock_history(symbol, days=250):
     try:
@@ -82,15 +81,12 @@ def get_stock_history(symbol, days=250):
         'Volume': vols
     }, index=dates)
 
-# حساب المؤشرات المؤسسية المتقدمة
 def compute_pro_indicators(df):
-    # RSI
     delta = df['Close'].diff()
     gain = (delta.where(delta > 0, 0)).rolling(14).mean()
     loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
     df['RSI'] = 100 - (100 / (1 + (gain / loss)))
     
-    # Money Flow Index (MFI - مؤشر تدفق السيولة المؤسسية)
     tp = (df['High'] + df['Low'] + df['Close']) / 3
     rmf = tp * df['Volume']
     pos_mf = np.where(tp > tp.shift(1), rmf, 0)
@@ -98,28 +94,20 @@ def compute_pro_indicators(df):
     mfr = pd.Series(pos_mf, index=df.index).rolling(14).sum() / (pd.Series(neg_mf, index=df.index).rolling(14).sum() + 1e-9)
     df['MFI'] = 100 - (100 / (1 + mfr))
     
-    # المتوسطات الزمنية (يومي وأسبوعي مكافئ)
     df['SMA_20'] = df['Close'].rolling(20).mean()
     df['SMA_50'] = df['Close'].rolling(50).mean()
-    df['SMA_200'] = df['Close'].rolling(200).mean() # فلتر الاتجاه العام طويل الأجل
-    
-    # انفجار السيولة
     df['Vol_Avg20'] = df['Volume'].rolling(20).mean()
     df['Vol_Spike'] = df['Volume'] / (df['Vol_Avg20'] + 1e-9)
-    
-    # ATR لحساب الوقف المتحرك
     df['ATR'] = (df['High'] - df['Low']).rolling(14).mean()
     return df
 
-# بناء الجدول المؤسسي الشامل
 def build_pro_table(stocks):
     rows = []
-    # محاكاة أداء مؤشر EGX30 للمقارنة النسبية
     egx_df = get_stock_history("COMI.CA")
-    egx_ret_20d = (egx_df['Close'].iloc[-1] - egx_df['Close'].iloc[-20]) / egx_df['Close'].iloc[-20]
+    egx_ret_20d = float((egx_df['Close'].iloc[-1] - egx_df['Close'].iloc[-20]) / egx_df['Close'].iloc[-20])
 
     for sym, name in stocks.items():
-        df = compute_pro_indicators(get_stock_history(sym))
+        df = compute_pro_indicators(get_stock_history(sym).copy())
         last = df.iloc[-1]
         prev = df.iloc[-2]
         
@@ -129,12 +117,10 @@ def build_pro_table(stocks):
         mfi = round(float(last['MFI']) if not pd.isna(last['MFI']) else 50.0, 1)
         vol_spike = round(float(last['Vol_Spike']), 2)
         
-        # القوة النسبية ضد المؤشر (أداء آخر 20 جلسة)
-        stock_ret_20d = (df['Close'].iloc[-1] - df['Close'].iloc[-20]) / df['Close'].iloc[-20]
+        stock_ret_20d = float((df['Close'].iloc[-1] - df['Close'].iloc[-20]) / df['Close'].iloc[-20])
         rs_alpha = round((stock_ret_20d - egx_ret_20d) * 100, 1)
         rs_label = f"قائد (+{rs_alpha}%) 🚀" if rs_alpha > 2 else (f"ضعيف ({rs_alpha}%) 🔻" if rs_alpha < -2 else f"متوافق ({rs_alpha}%)")
         
-        # حالة السيولة المؤسسية
         if mfi < 30 and vol_spike > 1.3:
             smart_money = "تجميع مؤسسي خفي 💎"
         elif mfi > 80:
@@ -144,7 +130,6 @@ def build_pro_table(stocks):
         else:
             smart_money = "تدفق طبيعي"
 
-        # القرار المؤسسي المصفّى (فلتر الاتجاه + السيولة)
         above_trend = price > float(last['SMA_50']) if not pd.isna(last['SMA_50']) else True
         if mfi < 35 and rsi < 38:
             rec = "شراء ارتدادي (قاع سيولة) 🟢"
@@ -204,15 +189,27 @@ if section == "1. رادار السيولة الذكية والقوة النسب
 # ==========================================
 elif section == "2. الرسم البياني والدعوم والمقاومات + Backtesting":
     st.subheader("📈 التحليل البياني، الدعوم والمقاومات الآلية، والاختبار العكسي")
-    choice = st.selectbox("اختر السهم أو الصندوق:", [f"{v} ({k})" for k, v in stocks_dict.items()])
-   sym = choice.split("(").replace(")", "")
-
-    df_c = compute_pro_indicators(get_stock_history(sym))
+    stock_map = {f"{v} ({k})": k for k, v in stocks_dict.items()}
+    choice = st.selectbox("اختر السهم أو الصندوق:", list(stock_map.keys()))
+    sym = stock_map[choice]
     
-    # حساب مستويات الدعم والمقاومة الآلية (Pivot Points) لآخر 20 جلسة
+    df_c = compute_pro_indicators(get_stock_history(sym).copy())
+    
     recent = df_c.tail(20)
     high_20 = float(recent['High'].max())
     low_20 = float(recent['Low'].min())
     close_last = float(recent['Close'].iloc[-1])
     pivot = (high_20 + low_20 + close_last) / 3
     res1 = (2 * pivot) - low_20
+    sup1 = (2 * pivot) - high_20
+
+    df_bt = df_c.copy()
+    df_bt['Signal'] = np.where(df_bt['MFI'] < 35, 1, np.where(df_bt['MFI'] > 70, 0, np.nan))
+    df_bt['Position'] = df_bt['Signal'].ffill().fillna(0)
+    df_bt['Market_Ret'] = df_bt['Close'].pct_change()
+    df_bt['Strat_Ret'] = df_bt['Position'].shift(1) * df_bt['Market_Ret']
+    
+    cum_strat = ((1 + df_bt['Strat_Ret'].fillna(0)).prod() - 1) * 100
+    cum_buy_hold = ((1 + df_bt['Market_Ret'].fillna(0)).prod() - 1) * 100
+    win_days = len(df_bt[df_bt['Strat_Ret'] > 0])
+    active_days = len(df_bt[df_bt['Strat_Ret'] != 0].dropna())
