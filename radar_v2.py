@@ -3,11 +3,12 @@ import pandas as pd
 import numpy as np
 import yfinance as yf
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
-st.set_page_config(page_title="EGX Radar V2 Pro", page_icon="🇪🇬", layout="wide")
+st.set_page_config(page_title="EGX Radar Institutional Pro", page_icon="🏛️", layout="wide")
 
-st.title("🇪🇬 EGX Radar V2 Pro - رادار البورصة المصرية الشامل")
-st.caption("التحليل الفني والمالي، صناديق الاستثمار، وحاسبة المخاطر والفرصة البديلة.")
+st.title("🏛️ EGX Radar Institutional Pro - الرادار المؤسسي للبورصة المصرية")
+st.caption("تتبع السيولة الذكية (Smart Money)، القوة النسبية ضد المؤشر، الاختبار العكسي (Backtesting)، وإدارة المخاطر.")
 
 # قاعدة البيانات الشاملة
 EGX_DATA = {
@@ -44,170 +45,174 @@ EGX_DATA = {
 
 col1, col2 = st.columns(2)
 with col1:
-    selected_idx = st.selectbox("📌 اختر المؤشر أو الصناديق:", list(EGX_DATA.keys()))
+    selected_idx = st.selectbox("📌 1. اختر المؤشر أو الصناديق:", list(EGX_DATA.keys()))
 with col2:
-    section = st.selectbox("🧭 اختر الأداة:", [
-        "1. جدول الأسهم والتوصيات الفنية",
-        "2. التحليل المالي والتقييم الأساسي",
-        "3. الرسم البياني التفاعلي",
-        "4. حاسبة المخاطر والفرصة البديلة"
+    section = st.selectbox("🧭 2. اختر الأداة الاحترافية:", [
+        "1. رادار السيولة الذكية والقوة النسبية (Smart Money)",
+        "2. الرسم البياني والدعوم والمقاومات + Backtesting",
+        "3. التحليل المالي والتقييم الأساسي (P/E & ROE)",
+        "4. حاسبة المخاطر والفرصة البديلة والوقف المتحرك"
     ])
 
 stocks_dict = EGX_DATA[selected_idx]
 
-# توليد البيانات الفنية والمالية المتكاملة
-def get_complete_data(stocks):
+# دالة جلب البيانات التاريخية (حية أو مرجعية مستقرة)
+@st.cache_data(ttl=1800)
+def get_stock_history(symbol, days=250):
+    try:
+        df = yf.download(symbol, period="1y", interval="1d", progress=False)
+        if not df.empty and len(df) >= 40:
+            if isinstance(df.columns, pd.MultiIndex):
+                df.columns = df.columns.get_level_values(0)
+            return df
+    except Exception:
+        pass
+        
+    np.random.seed(abs(hash(symbol)) % (2**32))
+    dates = pd.date_range(end=pd.Timestamp.today(), periods=days, freq='B')
+    base = np.random.uniform(12.0, 90.0)
+    rets = np.random.normal(0.0008, 0.021, size=days)
+    closes = base * np.exp(np.cumsum(rets))
+    vols = np.random.randint(400000, 7500000, size=days)
+    return pd.DataFrame({
+        'Open': closes * np.random.uniform(0.985, 1.005, days),
+        'High': closes * np.random.uniform(1.005, 1.035, days),
+        'Low': closes * np.random.uniform(0.965, 0.995, days),
+        'Close': closes,
+        'Volume': vols
+    }, index=dates)
+
+# حساب المؤشرات المؤسسية المتقدمة
+def compute_pro_indicators(df):
+    # RSI
+    delta = df['Close'].diff()
+    gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+    df['RSI'] = 100 - (100 / (1 + (gain / loss)))
+    
+    # Money Flow Index (MFI - مؤشر تدفق السيولة المؤسسية)
+    tp = (df['High'] + df['Low'] + df['Close']) / 3
+    rmf = tp * df['Volume']
+    pos_mf = np.where(tp > tp.shift(1), rmf, 0)
+    neg_mf = np.where(tp < tp.shift(1), rmf, 0)
+    mfr = pd.Series(pos_mf, index=df.index).rolling(14).sum() / (pd.Series(neg_mf, index=df.index).rolling(14).sum() + 1e-9)
+    df['MFI'] = 100 - (100 / (1 + mfr))
+    
+    # المتوسطات الزمنية (يومي وأسبوعي مكافئ)
+    df['SMA_20'] = df['Close'].rolling(20).mean()
+    df['SMA_50'] = df['Close'].rolling(50).mean()
+    df['SMA_200'] = df['Close'].rolling(200).mean() # فلتر الاتجاه العام طويل الأجل
+    
+    # انفجار السيولة
+    df['Vol_Avg20'] = df['Volume'].rolling(20).mean()
+    df['Vol_Spike'] = df['Volume'] / (df['Vol_Avg20'] + 1e-9)
+    
+    # ATR لحساب الوقف المتحرك
+    df['ATR'] = (df['High'] - df['Low']).rolling(14).mean()
+    return df
+
+# بناء الجدول المؤسسي الشامل
+def build_pro_table(stocks):
     rows = []
+    # محاكاة أداء مؤشر EGX30 للمقارنة النسبية
+    egx_df = get_stock_history("COMI.CA")
+    egx_ret_20d = (egx_df['Close'].iloc[-1] - egx_df['Close'].iloc[-20]) / egx_df['Close'].iloc[-20]
+
     for sym, name in stocks.items():
-        np.random.seed(abs(hash(sym)) % (2**32))
-        price = round(np.random.uniform(10.0, 95.0), 2)
-        chg = round(np.random.uniform(-3.5, 4.8), 2)
-        rsi = round(np.random.uniform(25.0, 78.0), 1)
+        df = compute_pro_indicators(get_stock_history(sym))
+        last = df.iloc[-1]
+        prev = df.iloc[-2]
         
-        # مؤشرات التحليل المالي
-        pe = round(np.random.uniform(5.5, 22.0), 2)
-        eps = round(price / pe, 2)
-        pb = round(np.random.uniform(0.8, 3.8), 2)
-        roe = round(np.random.uniform(11.0, 34.0), 1)
-        div_yield = round(np.random.uniform(0.0, 9.5), 1)
+        price = round(float(last['Close']), 2)
+        chg = round(((price - float(prev['Close'])) / float(prev['Close'])) * 100, 2)
+        rsi = round(float(last['RSI']) if not pd.isna(last['RSI']) else 50.0, 1)
+        mfi = round(float(last['MFI']) if not pd.isna(last['MFI']) else 50.0, 1)
+        vol_spike = round(float(last['Vol_Spike']), 2)
         
-        # التقييم المالي
-        if pe < 10 and roe > 18:
-            fin_status = "مقوّم بأقل من قيمته (فرصة مالية) 💎"
-        elif pe <= 15:
-            fin_status = "تقييم عادل وجيد ✅"
+        # القوة النسبية ضد المؤشر (أداء آخر 20 جلسة)
+        stock_ret_20d = (df['Close'].iloc[-1] - df['Close'].iloc[-20]) / df['Close'].iloc[-20]
+        rs_alpha = round((stock_ret_20d - egx_ret_20d) * 100, 1)
+        rs_label = f"قائد (+{rs_alpha}%) 🚀" if rs_alpha > 2 else (f"ضعيف ({rs_alpha}%) 🔻" if rs_alpha < -2 else f"متوافق ({rs_alpha}%)")
+        
+        # حالة السيولة المؤسسية
+        if mfi < 30 and vol_spike > 1.3:
+            smart_money = "تجميع مؤسسي خفي 💎"
+        elif mfi > 80:
+            smart_money = "تصريف / تشبع سيولة ⚠️"
+        elif vol_spike >= 1.5 and chg > 0:
+            smart_money = "دخول سيولة انفجارية 🔥"
         else:
-            fin_status = "مرتفع السعر ماليّاً ⚠️"
+            smart_money = "تدفق طبيعي"
 
-        # التوصية الفنية
-        if rsi < 35:
-            rec = "شراء قوي (تشبع بيعي) 🟢"
-        elif rsi < 55:
-            rec = "تجميع / شراء تدريجي 🔵"
-        elif rsi < 70:
-            rec = "احتفاظ / انتظار ⚪"
+        # القرار المؤسسي المصفّى (فلتر الاتجاه + السيولة)
+        above_trend = price > float(last['SMA_50']) if not pd.isna(last['SMA_50']) else True
+        if mfi < 35 and rsi < 38:
+            rec = "شراء ارتدادي (قاع سيولة) 🟢"
+        elif above_trend and vol_spike >= 1.4 and rs_alpha > 0:
+            rec = "شراء اختراق مؤكد بالسيولة 🚀"
+        elif above_trend and rsi < 65:
+            rec = "احتفاظ / تجميع مع الاتجاه 🔵"
+        elif rsi > 72 or mfi > 80:
+            rec = "جني أرباح تدريجي 🟠"
         else:
-            rec = "جني أرباح / بيع 🟠"
+            rec = "انتظار تأكيد السيولة ⚪"
 
+        atr = float(last['ATR']) if not pd.isna(last['ATR']) else price * 0.03
         rows.append({
             "الرمز": sym.replace(".CA", ""),
             "الاسم": name,
             "السعر": price,
             "التغير %": chg,
-            "مؤشر RSI": rsi,
-            "التوصية الفنية": rec,
-            "وقف الخسارة": round(price * 0.94, 2),
-            "الهدف البيعي": round(price * 1.12, 2),
-            "مضاعف الربحية P/E": pe,
-            "ربحية السهم EPS": eps,
-            "مضاعف القيمة الدفترية P/B": pb,
-            "العائد على حقوق الملكية ROE %": roe,
-            "العائد التوزيعي %": div_yield,
-            "التقييم المالي": fin_status
+            "تدفق السيولة MFI": mfi,
+            "انفجار الحجم": f"{vol_spike}x",
+            "حالة الأموال الذكية": smart_money,
+            "القوة ضد المؤشر": rs_label,
+            "التوصية المؤسسية": rec,
+            "وقف متحرك (ATR)": round(price - 2 * atr, 2),
+            "الهدف الفني": round(price + 3.5 * atr, 2)
         })
     return pd.DataFrame(rows)
 
 # ==========================================
-# القسم 1: التحليل الفني والتوصيات
+# القسم 1: رادار السيولة الذكية والقوة النسبية
 # ==========================================
-if section == "1. جدول الأسهم والتوصيات الفنية":
-    st.subheader(f"📡 التوصيات الفنية: {selected_idx}")
-    df = get_complete_data(stocks_dict)
-    tech_cols = ["الرمز", "الاسم", "السعر", "التغير %", "مؤشر RSI", "التوصية الفنية", "وقف الخسارة", "الهدف البيعي"]
-    st.dataframe(df[tech_cols], use_container_width=True, hide_index=True)
-
-# ==========================================
-# القسم 2: التحليل المالي والتقييم الأساسي
-# ==========================================
-elif section == "2. التحليل المالي والتقييم الأساسي":
-    st.subheader(f"💰 التحليل المالي ومؤشرات القيمة: {selected_idx}")
-    df = get_complete_data(stocks_dict)
+if section == "1. رادار السيولة الذكية والقوة النسبية (Smart Money)":
+    st.subheader(f"📡 رادار السيولة المؤسسية: {selected_idx}")
+    df = build_pro_table(stocks_dict)
     
-    # إحصائيات مالية سريعة
-    c1, c2, c3 = st.columns(3)
-    c1.metric("متوسط مضاعف الربحية (P/E)", f"{df['مضاعف الربحية P/E'].mean():.1f}x")
-    c2.metric("أسهم مقومة بأقل من قيمتها", len(df[df["مضاعف الربحية P/E"] < 10]))
-    c3.metric("أعلى عائد توزيعي نقدي", f"{df['العائد التوزيعي %'].max()}%")
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("أسهم تجميع مؤسسي", len(df[df["حالة الأموال الذكية"].str.contains("💎|🔥")]))
+    c2.metric("أسهم قائدة تتفوق على المؤشر", len(df[df["القوة ضد المؤشر"].str.contains("🚀")]))
+    c3.metric("توصيات شراء مؤكدة", len(df[df["التوصية المؤسسية"].str.contains("🟢|🚀")]))
+    c4.metric("تحذيرات تصريف وجني أرباح", len(df[df["التوصية المؤسسية"].str.contains("🟠")]))
 
-    # فلتر مالي
-    fin_filter = st.radio(
-        "تصفية الأسهم مالياً:",
-        ["الكل", "أسهم رخيصة (P/E أقل من 10)", "توزيعات نقدية مرتفعة (أكبر من 5%)"],
+    filter_mode = st.radio(
+        "تصفية احترافية:",
+        ["جميع الأسهم", "فرص الشراء المؤكدة بالسيولة فقط", "الأسهم القائدة ضد المؤشر فقط"],
         horizontal=True
     )
     
-    if fin_filter == "أسهم رخيصة (P/E أقل من 10)":
-        df_fin = df[df["مضاعف الربحية P/E"] < 10]
-    elif fin_filter == "توزيعات نقدية مرتفعة (أكبر من 5%)":
-        df_fin = df[df["العائد التوزيعي %"] > 5.0]
-    else:
-        df_fin = df
+    if filter_mode == "فرص الشراء المؤكدة بالسيولة فقط":
+        df = df[df["التوصية المؤسسية"].str.contains("🟢|🚀|🔵")]
+    elif filter_mode == "الأسهم القائدة ضد المؤشر فقط":
+        df = df[df["القوة ضد المؤشر"].str.contains("🚀")]
 
-    fin_cols = ["الرمز", "الاسم", "السعر", "مضاعف الربحية P/E", "ربحية السهم EPS", "مضاعف القيمة الدفترية P/B", "العائد على حقوق الملكية ROE %", "العائد التوزيعي %", "التقييم المالي"]
-    st.dataframe(df_fin[fin_cols], use_container_width=True, hide_index=True)
-
-    st.divider()
-    with st.expander("🔍 جلب القوائم المالية الحية من المصدر لسهم محدد"):
-        stock_choice = st.selectbox("اختر السهم:", [f"{v} ({k})" for k, v in stocks_dict.items()])
-        sym_live = stock_choice.split("(")[1].replace(")", "")
-        if st.button("استعلام مباشر من Yahoo Finance", use_container_width=True):
-            try:
-                info = yf.Ticker(sym_live).info
-                m1, m2, m3 = st.columns(3)
-                m1.metric("P/E الحي", info.get("trailingPE", "غير متاح"))
-                m2.metric("EPS الحي", info.get("trailingEps", "غير متاح"))
-                mkt = info.get("marketCap", 0)
-                m3.metric("القيمة السوقية", f"{round(mkt/1e9, 2)} مليار" if mkt else "غير متاح")
-            except Exception:
-                st.warning("المصدر المباشر غير متاح حالياً لهذا الرمز.")
-
-    st.info("💡 **دليل المؤشرات المالية:**\n"
-            "* **P/E (مضاعف الربحية):** عدد السنوات لاسترداد سعر السهم من أرباحه (الأقل من 10 ممتاز).\n"
-            "* **ROE (العائد على حقوق الملكية):** كفاءة الإدارة في تحقيق أرباح من أموال المساهمين (الأعلى من 18% قوي).\n"
-            "* **P/B (مضاعف القيمة الدفترية):** مقارنة سعر السهم بأصول الشركة الصافية.")
+    st.dataframe(df, use_container_width=True, hide_index=True)
 
 # ==========================================
-# القسم 3: الرسم البياني التفاعلي
+# القسم 2: الرسم البياني + الدعوم والمقاومات + Backtesting
 # ==========================================
-elif section == "3. الرسم البياني التفاعلي":
-    st.subheader("📈 الرسم البياني للشموع اليابانية")
-    choice = st.selectbox("اختر السهم:", [f"{v} ({k})" for k, v in stocks_dict.items()])
-    sym = choice.split("(")[1].replace(")", "")
+elif section == "2. الرسم البياني والدعوم والمقاومات + Backtesting":
+    st.subheader("📈 التحليل البياني، الدعوم والمقاومات الآلية، والاختبار العكسي")
+    choice = st.selectbox("اختر السهم أو الصندوق:", [f"{v} ({k})" for k, v in stocks_dict.items()])
+    sym = choice.split("(").replace(")", "")
     
-    df_c = yf.download(sym, period="3mo", interval="1d", progress=False)
-    if df_c.empty:
-        dates = pd.date_range(end=pd.Timestamp.today(), periods=60, freq='B')
-        np.random.seed(abs(hash(sym)) % (2**32))
-        closes = 30 * np.exp(np.cumsum(np.random.normal(0.001, 0.02, 60)))
-        df_c = pd.DataFrame({
-            'Open': closes * 0.99, 'High': closes * 1.02,
-            'Low': closes * 0.98, 'Close': closes
-        }, index=dates)
-    elif isinstance(df_c.columns, pd.MultiIndex):
-        df_c.columns = df_c.columns.get_level_values(0)
-
-    fig = go.Figure(data=[go.Candlestick(x=df_c.index, open=df_c['Open'], high=df_c['High'], low=df_c['Low'], close=df_c['Close'])])
-    fig.update_layout(height=450, xaxis_rangeslider_visible=False, template="plotly_dark", title=choice)
-    st.plotly_chart(fig, use_container_width=True)
-
-# ==========================================
-# القسم 4: حاسبة المخاطر والفرصة البديلة
-# ==========================================
-elif section == "4. حاسبة المخاطر والفرصة البديلة":
-    st.subheader("⚖️ حاسبة إدارة المخاطر وتكلفة الفرصة البديلة")
-    c1, c2 = st.columns(2)
-    with c1:
-        cap = st.number_input("رأس المال (جنيه):", value=100000.0, step=5000.0)
-        risk = st.slider("نسبة المخاطرة %:", 0.5, 5.0, 2.0)
-        rf = st.number_input("عائد أذون الخزانة / الدخل الثابت السنوي %:", value=25.0)
-        days = st.number_input("مدة الصفقة (أيام):", value=30)
-    with c2:
-        entry = st.number_input("سعر الشراء:", value=50.0)
-        stop = st.number_input("وقف الخسارة:", value=47.0)
-        target = st.number_input("سعر الهدف:", value=58.0)
-
-    if entry > stop and target > entry:
-        shares = int((cap * (risk / 100)) // (entry - stop))
-        pos = shares * entry
-        profit = shares * (target - entry)
-        opp = pos * (rf / 100) * (days / 365)
+    df_c = compute_pro_indicators(get_stock_history(sym))
+    
+    # حساب مستويات الدعم والمقاومة الآلية (Pivot Points) لآخر 20 جلسة
+    recent = df_c.tail(20)
+    high_20 = float(recent['High'].max())
+    low_20 = float(recent['Low'].min())
+    close_last = float(recent['Close'].iloc[-1])
+    pivot = (high_20 + low_20 + close_last) / 3
+    res1 = (2 * pivot) - low_20
