@@ -205,8 +205,8 @@ if section == "1. رادار السيولة الذكية والقوة النسب
 elif section == "2. الرسم البياني والدعوم والمقاومات + Backtesting":
     st.subheader("📈 التحليل البياني، الدعوم والمقاومات الآلية، والاختبار العكسي")
     choice = st.selectbox("اختر السهم أو الصندوق:", [f"{v} ({k})" for k, v in stocks_dict.items()])
-    sym = choice.split("(").replace(")", "")
-    
+   sym = choice.split("(").replace(")", "")
+
     df_c = compute_pro_indicators(get_stock_history(sym))
     
     # حساب مستويات الدعم والمقاومة الآلية (Pivot Points) لآخر 20 جلسة
